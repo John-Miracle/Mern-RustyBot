@@ -11,7 +11,7 @@ const app = express();
 //Read the sent data
 //It tells the app that we'll be using JSON format for incoming and outgoing data and will forwared sent data to JSON
 //MiddleWare
-app.use(cors({origin:"https://mern-rusty-bot-ptu8.vercel.app/",credentials:true})); //We can access this server only from this domain
+app.use(cors({origin:"https://mern-rusty-bot-ptu8-qxv03ihxe-john-linus-miracles-projects.vercel.app/",credentials:true})); //We can access this server only from this domain
 app.use(express.json());   
 app.use(cookieParser(process.env.COOKIE_SECRET));
 
