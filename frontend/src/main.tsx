@@ -8,7 +8,7 @@ import { AuthProvider } from './context/Auth-Context.tsx'
 import axios from "axios";
 import { Toaster } from "react-hot-toast";
 
-axios.defaults.baseURL = "https://mern-rusty-bot.vercel.app/api/v1";
+axios.defaults.baseURL = "https://mern-rusty-bot.vercel.app";
 axios.defaults.withCredentials = true; //It will allow setting and exchanging cookies with backend
 
 //Creating a customized theme
