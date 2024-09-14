@@ -2,6 +2,9 @@ import app from "./app.js";
 import { connectToDatabase,disconnetFromDatabase } from "./db/connection.js";
 
 //Connections and Listeners
+app.get('/api/v1', (req, res) => {
+  res.send('Hello from API v1!');
+});
 const PORT = process.env.PORT || 5000;
 connectToDatabase().then(()=> {
     app.listen(PORT, () => console.log("Server Open and Connected to Database"));
