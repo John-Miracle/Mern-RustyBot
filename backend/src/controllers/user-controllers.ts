@@ -1,183 +1,154 @@
-import {Response,Request,NextFunction} from 'express';
-import User from "../models/User.js"
-import {hash,compare} from 'bcrypt';
+import { Response, Request, NextFunction } from 'express';
+import User from "../models/User.js";
+import { hash, compare } from 'bcrypt';
 import { createToken } from '../utils/token-manager.js';
 import { COOKIE_NAME } from '../utils/constants.js';
 
-export const getAllUsers = async (req: Request,res: Response, next:NextFunction) => {
-    //get all users
-    try{
+export const getAllUsers = async (req: Request, res: Response, next: NextFunction) => {
+    try {
         const users = await User.find();
-        return res.status(200).json({message:"OK",users});
-    }
-    catch(error){
+        return res.status(200).json({ message: "OK", users });
+    } catch (error) {
         console.log(error);
-        return res.status(200).json({message:"ERROR",cause:error.message});
+        return res.status(500).json({ message: "ERROR", cause: error.message });
     }
 }
 
-export const userSignup = async (req: Request,res: Response, next:NextFunction) => {
-    //user Signup
-    try{
+export const userSignup = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { name, email, password } = req.body;
 
-        //Taking the values from the body and assigning it to different variables
-        const {name,email,password} = req.body;
-
-        //Check if the user already exists 
         const existingUser = await User.findOne({ email });
-        if(existingUser) return res.status(401).send("User already registered");
+        if (existingUser) return res.status(401).send("User already registered");
 
-        //Creating a hashed password 
-        const hashedPassword = await hash(password,10);
+        const hashedPassword = await hash(password, 10);
+        const user = new User({ name, email, password: hashedPassword });
 
-        //Creating a new User 
-        const user = new User({name,email,password: hashedPassword});
-
-        //save record in the database
         await user.save();
 
-         //Remove previous Cookies of the user and create new cookie
-         res.clearCookie(COOKIE_NAME,{
+        // Clear previous cookie
+        res.clearCookie(COOKIE_NAME, {
             httpOnly: true,
-            domain:".vercel.app",
+            domain: ".vercel.app",
             signed: true,
             path: "/",
-        })
-
-        //Creating token for user 
-        const token = createToken(user._id.toString(),user.email,"7d");
-
-        //Creation and Storage of Expiration date object
-        const expires = new Date();
-        expires.setDate(expires.getDate()+7);
-
-
-        //Sending cookie from backend to frontend
-        res.cookie(COOKIE_NAME,token,{
-            path:"/",
-            domain:".vercel.app",
-            expires,httpOnly: true,
-            signed: true
+            secure: true // Ensure this is set if using HTTPS
         });
 
-        //id stored in object format hence has to be converted into a string before being displayed as a response
-        return res.status(201).json({message: "OK",name:user.name,email:user.email});
-    }
-    catch(error){
+        const token = createToken(user._id.toString(), user.email, "7d");
+
+        const expires = new Date();
+        expires.setDate(expires.getDate() + 7);
+
+        res.cookie(COOKIE_NAME, token, {
+            path: "/",
+            domain: ".vercel.app",
+            expires,
+            httpOnly: true,
+            signed: true,
+            secure: true // Ensure this is set if using HTTPS
+        });
+
+        return res.status(201).json({ message: "OK", name: user.name, email: user.email });
+    } catch (error) {
         console.log(error);
-        return res.status(200).json({message:"ERROR",cause:error.message});
+        return res.status(500).json({ message: "ERROR", cause: error.message });
     }
 }
 
+export const userLogin = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { email, password } = req.body;
 
-export const userLogin = async (req: Request,res: Response, next:NextFunction) => {
-    //user Signup
-    try{
-
-        const {email,password} = req.body;
-
-        //Queries the database to find a user with the matching email 
-        const user = await User.findOne({email});
-        if (!user){
+        const user = await User.findOne({ email });
+        if (!user) {
             return res.status(401).send("User not Registered");
         }
 
-        //Checking if the given password is valid
-        const isPasswordCorrect = await compare(password,user.password);
-        if (!isPasswordCorrect){
+        const isPasswordCorrect = await compare(password, user.password);
+        if (!isPasswordCorrect) {
             return res.status(403).send("Incorrect Password");
         }
 
-        //Remove previous Cookies of the user and create new cookie
-        res.clearCookie(COOKIE_NAME,{
+        // Clear previous cookie
+        res.clearCookie(COOKIE_NAME, {
             httpOnly: true,
-            domain:".vercel.app",
+            domain: ".vercel.app",
             signed: true,
             path: "/",
-        })
-
-        //Creating token for user 
-        const token = createToken(user._id.toString(),user.email,"7d");
-
-        //Creation and Storage of Expiration date object
-        const expires = new Date();
-        expires.setDate(expires.getDate()+7);
-
-
-        //Sending cookie from backend to frontend
-        res.cookie(COOKIE_NAME,token,{
-            path:"/",
-            domain:".vercel.app",
-            expires,httpOnly: true,
-            signed: true
+            secure: true // Ensure this is set if using HTTPS
         });
-        //console.log("I think Sign in is not working but not fully"); 
-        //id stored in object format hence has to be converted into a string before being displayed as a response
-        return res.status(200).json({message: "OK",name:user.name,email:user.email});
-    }
-    catch(error){
-        console.log(error);
-         
-        return res.status(200).json({message:"ERROR",cause:error.message});
-    }
-}
 
+        const token = createToken(user._id.toString(), user.email, "7d");
 
-export const verifyUser = async (req: Request,res: Response, next:NextFunction) => {
-    try{
-        const user = await User.findById(res.locals.jwtData.id);
-        if (!user){
-            return res.status(401).send("User not Registered or Token malfunction");
-        }
+        const expires = new Date();
+        expires.setDate(expires.getDate() + 7);
 
-        console.log(user._id.toString(),res.locals.jwtData.id);
-
-        if (user._id.toString() !== res.locals.jwtData.id){
-            return res.status(401).send("Permissions do not match");
-        }
-        //console.log("I think Sign in is not working but not fully"); 
-        //id stored in object format hence has to be converted into a string before being displayed as a response
-        return res.status(200).json({message: "OK",name:user.name,email:user.email});
-    }
-    catch(error){
-        console.log(error);
-         
-        return res.status(200).json({message:"ERROR",cause:error.message});
-    }
-}
-
-export const userLogout = async (req: Request,res: Response, next:NextFunction) => {
-    try{
-        const user = await User.findById(res.locals.jwtData.id);
-        if (!user){
-            return res.status(401).send("User not Registered or Token malfunction");
-        }
-
-        console.log(user._id.toString(),res.locals.jwtData.id);
-
-        if (user._id.toString() !== res.locals.jwtData.id){
-            return res.status(401).send("Permissions do not match");
-        }
-
-        //Remove previous Cookies of the user and create new cookie
-        res.clearCookie(COOKIE_NAME,{
+        res.cookie(COOKIE_NAME, token, {
+            path: "/",
+            domain: ".vercel.app",
+            expires,
             httpOnly: true,
-            domain:".vercel.app",
+            signed: true,
+            secure: true // Ensure this is set if using HTTPS
+        });
+
+        return res.status(200).json({ message: "OK", name: user.name, email: user.email });
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ message: "ERROR", cause: error.message });
+    }
+}
+
+export const verifyUser = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const userId = res.locals.jwtData?.id; // Ensure this is set correctly
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(401).send("User not Registered or Token malfunction");
+        }
+
+        if (user._id.toString() !== userId) {
+            return res.status(401).send("Permissions do not match");
+        }
+
+        return res.status(200).json({ message: "OK", name: user.name, email: user.email });
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ message: "ERROR", cause: error.message });
+    }
+}
+
+export const userLogout = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const userId = res.locals.jwtData?.id; // Ensure this is set correctly
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(401).send("User not Registered or Token malfunction");
+        }
+
+        if (user._id.toString() !== userId) {
+            return res.status(401).send("Permissions do not match");
+        }
+
+        res.clearCookie(COOKIE_NAME, {
+            httpOnly: true,
+            domain: ".vercel.app",
             signed: true,
             path: "/",
-        })
+            secure: true // Ensure this is set if using HTTPS
+        });
 
-        //id stored in object format hence has to be converted into a string before being displayed as a response
-        return res.status(200).json({message: "OK",name:user.name,email:user.email});
-    }
-    catch(error){
+        return res.status(200).json({ message: "OK", name: user.name, email: user.email });
+    } catch (error) {
         console.log(error);
-         
-        return res.status(200).json({message:"ERROR",cause:error.message});
+        return res.status(500).json({ message: "ERROR", cause: error.message });
     }
 }
 
-//200: OK
-//201: Created
-//403: Forbidden
-//422: Unprocessable Entity
+// HTTP Status Codes
+// 200: OK
+// 201: Created
+// 401: Unauthorized
+// 403: Forbidden
+// 500: Internal Server Error
