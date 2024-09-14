@@ -10,10 +10,6 @@ import { Toaster } from "react-hot-toast";
 
 axios.defaults.baseURL = "https://mern-rusty-bot.vercel.app/";
 axios.defaults.withCredentials = true; //It will allow setting and exchanging cookies with backend
-app.use(cors({
-  origin: "https://mern-rusty-bot.vercel.app/",
-  credentials: true
-}));
 
 //Creating a customized theme
 const theme = createTheme({typography:{
